@@ -1,0 +1,19 @@
+services:
+  bible-blog-publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bible-blog-publisher
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - DATABASE_PATH=sqlite:////app/data/bible_publisher.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-mock_key}
+    volumes:
+      - bible_data:/app/data
+
+volumes:
+  bible_data:
+    driver: local
