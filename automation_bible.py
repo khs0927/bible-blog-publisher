@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import requests
 from openai import OpenAI
 
 BIBLE_VERSES_DATABASE = {
@@ -96,7 +97,7 @@ class BibleMeditationGenerator:
             try:
                 prompt = f"""
 당신은 은혜롭고 따뜻한 성경 묵상 칼럼니스트입니다.
-아래 성경 구절을 바탕으로 블로그에 포스팅할 묵상 글을 작성해주세요.
+티스토리 블로그에 포스팅할 묵상 글을 작성해주세요.
 
 - 성경 구절: {passage} ({text})
 - 주제 카테고리: {category}
@@ -104,10 +105,10 @@ class BibleMeditationGenerator:
 
 JSON 형식으로 응답해주세요:
 {{
-  "title": "블로그 포스팅 제목",
+  "title": "티스토리 블로그 포스팅 제목 (감성적이고 유입률 높은 제목)",
   "meditation": "성경 본문의 깊은 의미와 현대 삶에서의 적용을 다룬 묵상 글 (3~4개 단락)",
   "prayer": "오늘 하루를 위한 고백과 결단의 마무리 기도문",
-  "tags": "#성경말씀 #오늘의묵상 #{category.replace(' ', '')} #말씀카드 #기독교블로그"
+  "tags": "성경말씀,오늘의묵상,{category.replace(' ', '')},말씀카드,기독교블로그,티스토리묵상"
 }}
 """
                 response = self.client.chat.completions.create(
@@ -116,37 +117,42 @@ JSON 형식으로 응답해주세요:
                     response_format={"type": "json_object"}
                 )
                 res_data = json.loads(response.choices[0].message.content)
-                title = res_data.get("title", f"[{passage}] 마음의 평안을 전하는 오늘의 말씀 묵상")
+                title = res_data.get("title", f"✨ [{passage}] 세상을 이기는 은혜와 평안의 말씀 묵상")
                 meditation = res_data.get("meditation", "")
                 prayer = res_data.get("prayer", "")
-                tags = res_data.get("tags", f"#성경말씀 #{passage} #오늘의묵상")
+                tags = res_data.get("tags", "성경말씀,오늘의묵상,기독교,티스토리")
             except Exception as e:
-                print(f"OpenAI API 호출 중 예외: {e}. 스마트 내장 엔진으로 전환합니다.")
+                print(f"OpenAI API 예외 발생: {e}. 스마트 내장 묵상 엔진으로 전환합니다.")
                 title, meditation, prayer, tags = self._fallback_generate(passage, text, category, tone)
         else:
             title, meditation, prayer, tags = self._fallback_generate(passage, text, category, tone)
 
-        full_content = f"""📖 오늘의 성경 말씀 [{passage}]
+        # 티스토리 블로그 HTML 호환 템플릿 생성
+        full_content = f"""<div style="font-family: 'Noto Serif KR', serif; line-height: 1.8; color: #2d3748; max-width: 720px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #744210 0%, #b7791f 100%); color: #ffffff; padding: 24px; border-radius: 16px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(116, 66, 16, 0.15);">
+    <span style="font-size: 12px; letter-spacing: 1px; text-transform: uppercase; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 20px;">📖 {category}</span>
+    <h2 style="font-size: 22px; font-weight: bold; margin-top: 12px; margin-bottom: 0; color: #ffffff;">{passage}</h2>
+    <p style="font-size: 15px; font-style: italic; margin-top: 8px; opacity: 0.95; line-height: 1.6;">"{text}"</p>
+  </div>
 
-"{text}"
+  <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
 
----
-
-🌿 말씀 묵상과 마음의 정원
-
+  <h3 style="font-size: 18px; color: #744210; font-weight: bold; margin-bottom: 16px;">🌿 말씀 묵상과 생각하기</h3>
+  <div style="font-size: 15px; color: #4a5568; white-space: pre-line; margin-bottom: 28px;">
 {meditation}
+  </div>
 
----
+  <div style="background-color: #fefcbf; border-left: 4px solid #d69e2e; padding: 18px 20px; border-radius: 8px; margin-bottom: 28px;">
+    <h4 style="font-size: 15px; font-weight: bold; color: #744210; margin-top: 0; margin-bottom: 8px;">🙏 오늘의 기도</h4>
+    <p style="font-size: 14px; color: #744210; margin: 0; font-style: italic;">{prayer}</p>
+  </div>
 
-기도문 🙏
+  <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
 
-{prayer}
-
----
-
-🏷️ 해시태그
-{tags}
-"""
+  <div style="font-size: 13px; color: #a0aec0; font-weight: 500;">
+    🏷️ <b>태그:</b> {tags}
+  </div>
+</div>"""
 
         return {
             "passage": passage,
@@ -174,5 +180,36 @@ JSON 형식으로 응답해주세요:
 우리의 마음 속 두려움과 근심을 내려놓고 주님의 신실한 약속만을 붙들게 하소서.
 예수님의 이름으로 기도드립니다. 아멘."""
 
-        tags = f"#성경말씀 #{passage.replace(' ', '')} #오늘의묵상 #성경구절 #{category.replace(' ', '')} #기독교블로그"
+        tags = f"성경말씀,{passage.replace(' ', '')},오늘의묵상,성경구절,{category.replace(' ', '')},티스토리묵상"
         return title, meditation, prayer, tags
+
+    def post_to_tistory_api(self, access_token, blog_name, title, content, category_id="0", tag_string=""):
+        """
+        티스토리 OpenAPI 글 쓰기 (https://www.tistory.com/guide/api/post/write)
+        """
+        url = "https://www.tistory.com/apis/post/write"
+        params = {
+            "access_token": access_token,
+            "output": "json",
+            "blogName": blog_name,
+            "title": title,
+            "content": content,
+            "visibility": "3",  # 3: 발행 (공개), 0: 비공개
+            "category": category_id,
+            "tag": tag_string
+        }
+        try:
+            res = requests.post(url, data=params, timeout=10)
+            data = res.json()
+            if data.get("tistory", {}).get("status") == "200":
+                post_id = data["tistory"].get("postId")
+                url = data["tistory"].get("url")
+                print(f"티스토리 포스팅 성공: ID {post_id}, URL {url}")
+                return True, url
+            else:
+                err_msg = data.get("tistory", {}).get("errMsg", "알 수 없는 오류")
+                print(f"티스토리 API 연동 실패: {err_msg}")
+                return False, err_msg
+        except Exception as e:
+            print(f"티스토리 API 통신 예외: {e}")
+            return False, str(e)

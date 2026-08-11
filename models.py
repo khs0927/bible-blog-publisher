@@ -36,13 +36,17 @@ class BibleAutomationSettings(db.Model):
     __tablename__ = 'bible_automation_settings'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, nullable=False, default=1)
+    tistory_blog_name = Column(String(100), default='my-bible-meditation')
+    tistory_access_token = Column(Text, default='')
+    tistory_category_id = Column(String(50), default='0')
     categories = Column(Text, default='["위로와 평안", "소망과 용기", "감사와 기쁨", "지혜와 인도"]')
     preferred_tone = Column(String(50), default='은혜로운 묵상체')
     interval_hours = Column(Integer, default=12)
     is_active = Column(Boolean, default=True)
-    auto_publish_naver = Column(Boolean, default=True)
+    auto_publish_tistory = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         return f'<BibleAutomationSettings user_id={self.user_id}>'
+
