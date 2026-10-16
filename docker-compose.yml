@@ -11,6 +11,9 @@ services:
       - PORT=5001
       - DATABASE_PATH=sqlite:////app/data/bible_publisher.db
       - OPENAI_API_KEY=${OPENAI_API_KEY:-mock_key}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:?set ADMIN_API_KEY}
+      - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5001}
     volumes:
       - bible_data:/app/data
 

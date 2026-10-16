@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from models import db, BibleBlogPost, BibleAutomationSettings
 from automation_bible import BibleMeditationGenerator
+from security import require_admin, encrypt_secret, decrypt_secret
 
 bible_bp = Blueprint('bible', __name__)
 generator = BibleMeditationGenerator()
@@ -38,6 +39,7 @@ def get_bible_posts():
     return jsonify({"posts": posts_list})
 
 @bible_bp.route('/bible/generate', methods=['POST'])
+@require_admin
 def generate_bible_post():
     data = request.json or {}
     category = data.get("category", "위로와 평안")
@@ -51,9 +53,10 @@ def generate_bible_post():
     tistory_status = "published"
     publish_msg = "티스토리 로컬 생성 완료"
 
-    if settings and settings.tistory_access_token and settings.tistory_blog_name:
+    access_token = decrypt_secret(settings.tistory_access_token) if settings else ""
+    if settings and access_token and settings.tistory_blog_name:
         success, res_info = generator.post_to_tistory_api(
-            access_token=settings.tistory_access_token,
+            access_token=access_token,
             blog_name=settings.tistory_blog_name,
             title=result["title"],
             content=result["full_content"],
@@ -101,6 +104,7 @@ def generate_bible_post():
     })
 
 @bible_bp.route('/bible/settings', methods=['GET', 'POST'])
+@require_admin
 def bible_settings():
     if request.method == 'GET':
         settings = BibleAutomationSettings.query.filter_by(user_id=1).first()
@@ -108,7 +112,7 @@ def bible_settings():
             return jsonify({
                 "user_id": 1,
                 "tistory_blog_name": "my-bible-meditation",
-                "tistory_access_token": "",
+                "tistory_token_set": False,
                 "tistory_category_id": "0",
                 "categories": ["위로와 평안", "소망과 용기", "감사와 기쁨", "지혜와 인도"],
                 "preferred_tone": "은혜로운 묵상체",
@@ -125,7 +129,7 @@ def bible_settings():
         return jsonify({
             "user_id": settings.user_id,
             "tistory_blog_name": settings.tistory_blog_name,
-            "tistory_access_token": settings.tistory_access_token,
+            "tistory_token_set": bool(decrypt_secret(settings.tistory_access_token)),
             "tistory_category_id": settings.tistory_category_id,
             "categories": cats,
             "preferred_tone": settings.preferred_tone,
@@ -136,7 +140,12 @@ def bible_settings():
 
     data = request.json or {}
     tistory_blog_name = data.get("tistory_blog_name", "my-bible-meditation")
-    tistory_access_token = data.get("tistory_access_token", "")
+    # Blank/missing token means "keep the stored token"; "clear_tistory_token" removes it.
+    new_token = (data.get("tistory_access_token") or "").strip()
+    try:
+        encrypted_token = encrypt_secret(new_token) if new_token else None
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
     tistory_category_id = data.get("tistory_category_id", "0")
     categories = data.get("categories", ["위로와 평안", "소망과 용기"])
     preferred_tone = data.get("preferred_tone", "은혜로운 묵상체")
@@ -149,7 +158,7 @@ def bible_settings():
         settings = BibleAutomationSettings(
             user_id=1,
             tistory_blog_name=tistory_blog_name,
-            tistory_access_token=tistory_access_token,
+            tistory_access_token=encrypted_token or "",
             tistory_category_id=tistory_category_id,
             categories=json.dumps(categories),
             preferred_tone=preferred_tone,
@@ -160,7 +169,12 @@ def bible_settings():
         db.session.add(settings)
     else:
         settings.tistory_blog_name = tistory_blog_name
-        settings.tistory_access_token = tistory_access_token
+        if encrypted_token:
+            settings.tistory_access_token = encrypted_token
+        elif data.get("clear_tistory_token"):
+            settings.tistory_access_token = ""
+        elif settings.tistory_access_token and not settings.tistory_access_token.startswith("enc:"):
+            settings.tistory_access_token = encrypt_secret(settings.tistory_access_token)
         settings.tistory_category_id = tistory_category_id
         settings.categories = json.dumps(categories)
         settings.preferred_tone = preferred_tone

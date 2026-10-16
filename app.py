@@ -8,11 +8,12 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from models import db
 from routes_bible import bible_bp
+from security import cors_origins
 
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 app = Flask(__name__, static_folder=static_dir, static_url_path="/")
-CORS(app)
+CORS(app, origins=cors_origins(), allow_headers=["Content-Type", "Authorization", "X-Admin-Key"])
 
 db_path = os.environ.get("DATABASE_PATH") or "sqlite:///bible_publisher.db"
 app.config["SQLALCHEMY_DATABASE_URI"] = db_path
@@ -30,6 +31,8 @@ def serve_index():
 
 @app.route("/<path:path>")
 def serve_static(path):
+    if path.startswith("api/"):
+        return {"error": "not found"}, 404
     if os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, "index.html")

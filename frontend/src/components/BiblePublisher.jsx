@@ -19,6 +19,7 @@ export default function BiblePublisher({ setMessage }) {
   const [tistoryBlogName, setTistoryBlogName] = useState('my-bible-meditation');
   const [tistoryAccessToken, setTistoryAccessToken] = useState('');
   const [tistoryCategoryId, setTistoryCategoryId] = useState('0');
+  const [tistoryTokenSet, setTistoryTokenSet] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -51,7 +52,7 @@ export default function BiblePublisher({ setMessage }) {
       setAutoActive(res.data.is_active);
       setIntervalHours(res.data.interval_hours);
       setTistoryBlogName(res.data.tistory_blog_name || 'my-bible-meditation');
-      setTistoryAccessToken(res.data.tistory_access_token || '');
+      setTistoryTokenSet(!!res.data.tistory_token_set);
       setTistoryCategoryId(res.data.tistory_category_id || '0');
     } catch (err) {
       console.error('티스토리 설정 로딩 실패', err);
@@ -91,8 +92,10 @@ export default function BiblePublisher({ setMessage }) {
         auto_publish_tistory: true,
       });
       setMessage(res.data.message);
-    } catch (err) {
-      setMessage('티스토리 설정 저장 실패');
+      if (tistoryAccessToken) setTistoryTokenSet(true);
+      setTistoryAccessToken('');
+    } catch {
+      setMessage('티스토리 설정 저장 실패 (관리자 키를 확인하세요)');
     }
   };
 
@@ -171,7 +174,7 @@ export default function BiblePublisher({ setMessage }) {
                 type="password"
                 value={tistoryAccessToken}
                 onChange={(e) => setTistoryAccessToken(e.target.value)}
-                placeholder="티스토리 오픈API 토큰 입력 (미입력시 로컬 저장)"
+                placeholder={tistoryTokenSet ? '저장된 토큰 있음 (변경할 때만 입력)' : '티스토리 오픈API 토큰 입력'}
                 className="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white font-mono"
               />
             </div>
