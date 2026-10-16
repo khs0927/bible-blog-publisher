@@ -45,3 +45,15 @@ vercel
 - **Frontend**: React (Vite), Tailwind CSS
 - **Container**: Docker Multi-stage Build (Node 22 + Python 3.12 slim)
 - **Deployment**: Docker Compose, Vercel
+
+## Security configuration
+
+| Variable | Purpose |
+|---|---|
+| `ADMIN_API_KEY` | Required. Protects `GET/POST /api/bible/settings` and `POST /api/bible/generate` (send as `X-Admin-Key` or `Authorization: Bearer`). If unset, those endpoints return 503. Enter it in the UI's "관리자 키" field (kept in sessionStorage only). |
+| `SETTINGS_ENCRYPTION_KEY` | Optional Fernet key (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`) used to encrypt the Tistory token at rest. Defaults to a key derived from `ADMIN_API_KEY` (rotating that key then makes the stored token unreadable; re-enter it). |
+| `CORS_ORIGINS` | Comma-separated allowed origins. Default `http://localhost:5173,http://127.0.0.1:5173`. `*` is ignored. |
+
+The Tistory token is never returned by the API; settings return `tistory_token_set: true/false`. Leave the token field blank to keep the stored token.
+
+Run tests: `pip install -r requirements.txt -r requirements-dev.txt && pytest -q`
